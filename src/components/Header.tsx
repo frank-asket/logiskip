@@ -8,9 +8,16 @@ import {
   Layers, 
   UserCheck, 
   CheckCircle2, 
-  AlertTriangle 
+  AlertTriangle,
+  Smartphone,
+  Globe,
+  Database,
+  Lock,
+  ChevronDown
 } from 'lucide-react';
 import { TelemetryEvent } from '../types/supplyChain';
+
+export type UserRole = 'cpo' | 'analyst' | 'plant_manager' | 'supplier_rep';
 
 interface HeaderProps {
   onOpenReport: () => void;
@@ -18,8 +25,8 @@ interface HeaderProps {
   telemetryEvents: TelemetryEvent[];
   activeView: string;
   setActiveView: (view: string) => void;
-  isSupplierPortalMode: boolean;
-  setIsSupplierPortalMode: (val: boolean) => void;
+  currentRole: UserRole;
+  setCurrentRole: (role: UserRole) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,19 +35,28 @@ export const Header: React.FC<HeaderProps> = ({
   telemetryEvents,
   activeView,
   setActiveView,
-  isSupplierPortalMode,
-  setIsSupplierPortalMode
+  currentRole,
+  setCurrentRole
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showRoleMenu, setShowRoleMenu] = useState(false);
+
   const criticalCount = telemetryEvents.filter(e => e.severity === 'critical' || e.severity === 'high').length;
+
+  const roleLabels: Record<UserRole, { title: string; subtitle: string; badge: string }> = {
+    cpo: { title: 'Elena Vance', subtitle: 'Chief Procurement Officer', badge: 'Full Approval Admin' },
+    analyst: { title: 'Marcus Chen', subtitle: 'Supply Chain ML Analyst', badge: 'Model Simulation' },
+    plant_manager: { title: 'David Miller', subtitle: 'Detroit Plant Alpha Director', badge: 'Operations' },
+    supplier_rep: { title: 'Kenji Lin', subtitle: 'SilicoPrecision Rep (TW)', badge: 'Vendor Portal' }
+  };
 
   return (
     <header className="sticky top-0 z-40 bg-[#1A0B2E] text-white border-b border-[#2A1343] shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Brand Logo & Tagline */}
-          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => { setIsSupplierPortalMode(false); setActiveView('overview'); }}>
+          {/* Brand Logo & Monorepo Client Indicator */}
+          <div className="flex items-center space-x-3 cursor-pointer" onClick={() => setActiveView('overview')}>
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#2A1343] to-[#1A0B2E] border border-[#FFB7A5]/40 flex items-center justify-center shadow-md">
               <span className="text-xl font-black text-[#FFB7A5] tracking-tighter">LS</span>
               <span className="absolute -top-1 -right-1 w-3 h-3 bg-[#FFB7A5] rounded-full ring-2 ring-[#1A0B2E] animate-pulse"></span>
@@ -57,10 +73,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Quick Metrics Ticker */}
-          <div className="hidden lg:flex items-center space-x-6 px-4 py-1.5 bg-[#2A1343]/60 rounded-full border border-purple-900/50 text-xs">
+          <div className="hidden xl:flex items-center space-x-5 px-4 py-1.5 bg-[#2A1343]/60 rounded-full border border-purple-900/50 text-xs">
             <div className="flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-              <span className="text-gray-300">Global Risk Index:</span>
+              <span className="text-gray-300">Global Risk:</span>
               <span className="font-bold font-mono text-rose-300">78.4 / 100</span>
             </div>
             <div className="h-3 w-px bg-purple-800"></div>
@@ -75,43 +91,66 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Action CTAs */}
-          <div className="flex items-center space-x-3">
-            {/* ROI Calculator */}
-            <button
-              onClick={onOpenRoi}
-              className="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-200 hover:text-white bg-[#2A1343] hover:bg-[#381B59] border border-purple-900 transition-colors"
-              title="Calculate potential enterprise savings"
-            >
-              <Calculator className="w-3.5 h-3.5 text-[#FFB7A5]" />
-              <span>ROI Model</span>
-            </button>
-
+          {/* Action CTAs and Modals */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            
             {/* AI Executive Brief */}
             <button
               onClick={onOpenReport}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-[#FFB7A5] to-[#FFA088] text-[#1A0B2E] hover:opacity-95 shadow-sm transition-all"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>AI Executive Brief</span>
+              <span className="hidden sm:inline">AI Executive Brief</span>
+              <span className="sm:hidden">Brief</span>
             </button>
 
-            {/* Supplier Portal Toggle Mode */}
-            <button
-              onClick={() => {
-                setIsSupplierPortalMode(!isSupplierPortalMode);
-                if (!isSupplierPortalMode) setActiveView('portal');
-                else setActiveView('overview');
-              }}
-              className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                isSupplierPortalMode 
-                  ? 'bg-amber-400/20 text-amber-300 border-amber-400/40' 
-                  : 'bg-[#2A1343] text-gray-300 border-purple-900 hover:text-white'
-              }`}
-            >
-              <UserCheck className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isSupplierPortalMode ? 'Exit Supplier Portal' : 'Supplier Portal'}</span>
-            </button>
+            {/* Keycloak RBAC Switcher Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowRoleMenu(!showRoleMenu)}
+                className="flex items-center space-x-2 px-2.5 py-1.5 rounded-lg text-xs bg-[#2A1343] hover:bg-[#381B59] border border-purple-900 text-gray-200"
+                title="Identity Provider (Keycloak RBAC)"
+              >
+                <Lock className="w-3.5 h-3.5 text-[#FFB7A5]" />
+                <span className="hidden md:inline font-medium">{roleLabels[currentRole].title}</span>
+                <ChevronDown className="w-3 h-3 text-gray-400" />
+              </button>
+
+              {showRoleMenu && (
+                <div className="absolute right-0 mt-2 w-72 bg-[#1A0B2E] rounded-xl border border-purple-800 shadow-2xl p-2 z-50 text-xs">
+                  <div className="px-2 py-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-purple-900/60 mb-1 flex items-center justify-between">
+                    <span>Keycloak Enterprise RBAC</span>
+                    <span className="text-emerald-400 font-mono text-[9px]">OIDC Active</span>
+                  </div>
+
+                  {(Object.keys(roleLabels) as UserRole[]).map((r) => {
+                    const info = roleLabels[r];
+                    const isSelected = currentRole === r;
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => {
+                          setCurrentRole(r);
+                          setShowRoleMenu(false);
+                          if (r === 'supplier_rep') setActiveView('portal');
+                        }}
+                        className={`w-full text-left p-2 rounded-lg transition-colors flex items-center justify-between ${
+                          isSelected ? 'bg-purple-900 text-white font-semibold' : 'text-gray-300 hover:bg-[#2A1343]'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-bold text-white text-xs">{info.title}</div>
+                          <div className="text-[10px] text-gray-400">{info.subtitle}</div>
+                        </div>
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-950 text-[#FFB7A5] font-mono">
+                          {info.badge}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
             {/* Live Telemetry Bell with Dropdown */}
             <div className="relative">

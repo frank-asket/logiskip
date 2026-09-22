@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Header } from './components/Header';
+import { Header, UserRole } from './components/Header';
 import { Sidebar } from './components/Sidebar';
 import { DashboardOverview } from './components/DashboardOverview';
 import { RiskPredictionEngine } from './components/RiskPredictionEngine';
@@ -8,6 +8,9 @@ import { OptimizationSolver } from './components/OptimizationSolver';
 import { NetworkGraphView } from './components/NetworkGraphView';
 import { SupplierPortal } from './components/SupplierPortal';
 import { TelemetryFeed } from './components/TelemetryFeed';
+import { LandingPageView } from './components/LandingPageView';
+import { MobileAppView } from './components/MobileAppView';
+import { DatabaseExplorerView } from './components/DatabaseExplorerView';
 import { ExecutiveReportModal } from './components/ExecutiveReportModal';
 import { RoiCalculatorModal } from './components/RoiCalculatorModal';
 
@@ -21,7 +24,7 @@ export function App() {
 
   const [activeView, setActiveView] = useState<string>('overview');
   const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [isSupplierPortalMode, setIsSupplierPortalMode] = useState<boolean>(false);
+  const [currentRole, setCurrentRole] = useState<UserRole>('cpo');
 
   const [isReportOpen, setIsReportOpen] = useState<boolean>(false);
   const [isRoiOpen, setIsRoiOpen] = useState<boolean>(false);
@@ -56,7 +59,7 @@ export function App() {
       return po;
     });
 
-    // Add new PO for Dresden
+    // Add new fast-tracked PO for Dresden
     const dresdenPO: PurchaseOrder = {
       id: `po-auto-${Date.now()}`,
       poNumber: `PO-2026-${Math.floor(9000 + Math.random() * 999)}`,
@@ -78,7 +81,7 @@ export function App() {
 
     setPurchaseOrders([...updatedPOs, dresdenPO]);
 
-    // Emit live telemetry event
+    // Emit live telemetry event to Kafka broker
     handleEmitTelemetry({
       id: `tel-${Date.now()}`,
       timestamp: new Date().toLocaleTimeString(),
@@ -104,8 +107,8 @@ export function App() {
         telemetryEvents={telemetryEvents}
         activeView={activeView}
         setActiveView={setActiveView}
-        isSupplierPortalMode={isSupplierPortalMode}
-        setIsSupplierPortalMode={setIsSupplierPortalMode}
+        currentRole={currentRole}
+        setCurrentRole={setCurrentRole}
       />
 
       {/* Main Layout Body */}
@@ -114,14 +117,11 @@ export function App() {
         {/* Navigation Sidebar */}
         <Sidebar
           activeView={activeView}
-          setActiveView={(view) => {
-            setActiveView(view);
-            if (view === 'portal') setIsSupplierPortalMode(true);
-            else setIsSupplierPortalMode(false);
-          }}
+          setActiveView={setActiveView}
           criticalSuppliersCount={criticalSuppliersCount}
           openPOsCount={openPOsCount}
-          isSupplierPortalMode={isSupplierPortalMode}
+          currentRole={currentRole}
+          onOpenRoi={() => setIsRoiOpen(true)}
         />
 
         {/* View Workspace Container */}
@@ -134,6 +134,31 @@ export function App() {
               onSelectSupplier={handleSelectSupplier}
               onNavigateView={setActiveView}
               onRunOptimization={() => setActiveView('optimizer')}
+            />
+          )}
+
+          {activeView === 'landing' && (
+            <LandingPageView
+              onEnterDashboard={() => setActiveView('overview')}
+              onOpenRoi={() => setIsRoiOpen(true)}
+              onOpenReport={() => setIsReportOpen(true)}
+            />
+          )}
+
+          {activeView === 'mobile' && (
+            <MobileAppView
+              telemetryEvents={telemetryEvents}
+              purchaseOrders={purchaseOrders}
+              suppliers={suppliers}
+              onQuickApproveReallocation={() => handleApplyOptimization([])}
+            />
+          )}
+
+          {activeView === 'databases' && (
+            <DatabaseExplorerView
+              suppliers={suppliers}
+              purchaseOrders={purchaseOrders}
+              telemetryEvents={telemetryEvents}
             />
           )}
 
