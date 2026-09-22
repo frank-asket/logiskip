@@ -1,0 +1,8 @@
+{
+  "name": "Logiskip - Enterprise AI Supply Chain Risk & Procurement Platform",
+  "description": "Enterprise AI platform for 30-90 day supplier risk prediction, Prophet demand forecasting, linear programming re-allocation, and procurement optimization.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
